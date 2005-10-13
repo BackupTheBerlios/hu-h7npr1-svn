@@ -16,12 +16,12 @@ implements Runnable
 {
 	private Socket socket = null;
 	private String path;
-	private String seperator;
-	private int requestnumber;
+	private String separator;
+	private int requestNumber;
 
 	public Service(Socket newSocket, String path, int r)
 	{
-		requestnumber = r;            
+		requestNumber = r;            
 		writeDebug("Service ("+newSocket+")");
 		socket = newSocket;
 		this.path = path;
@@ -35,81 +35,50 @@ implements Runnable
 
 		try
 		{
-			sr = new ServiceReader(socket.getInputStream(), socket.getLocalPort(), requestnumber);
-			sw = new ServiceWriter(socket.getOutputStream(), socket.getLocalPort(), requestnumber);
+			sr = new ServiceReader(socket.getInputStream(), socket.getLocalPort(), requestNumber, false);
+			sw = new ServiceWriter(socket.getOutputStream(), socket.getLocalPort(), requestNumber, false);
 
-			socket.setKeepAlive(true);
-			while (socket.getKeepAlive() && socket.isBound() && socket.isConnected() && !socket.isClosed())
+			if (sr.readRequest())
 			{
-				try
+				//  Afhandeling output    
+				/* method check */
+				if (sr.method.equalsIgnoreCase("GET"))
+				{} // GET hoeft nog niets speciaals
+				else
+					sw.outputStatus(500, "Type not supported");
+
+				if (sr.requestUrl.indexOf("../") != -1)
+					sw.outputStatus(404, "Not Found");
+
+				/* requestUrl */
+				//os dependend separator
+				//seperator = System.getProperty("file.seperator");
+				separator = File.separator;
+
+				//replace \ met de os dependend separator indien nodig (c.q equals aan /)
+            if (separator.equals("/"))
+            	sr.requestUrl = sr.requestUrl.replace("\\".charAt(0),separator.charAt(0));
+            else
+            	sr.requestUrl = sr.requestUrl.replace("/".charAt(0),separator.charAt(0));
+
+				boolean continueOutput;
+
+				if (sr.requestUrl.substring(0,1).equals(separator) && path.substring(path.length() - 1).equals(separator))
 				{
-					if (sr.readRequest())
-					{
-						//  Afhandeling output    
-						readFails = 0;
-						/* method check */
-						if (sr.method.equalsIgnoreCase("GET"))
-						{}
-						else if (sr.method.equalsIgnoreCase("POST"))
-							sr.requestUrl = "/errordocs/notsupported.html";
-						else
-							sr.requestUrl = "/errordocs/notsupported.html";
-
-						/* requestUrl */
-						//os dependend seperator
-						//seperator = System.getProperty("file.seperator");
-						seperator = File.separator;
-
-						//replace \ met de os dependend seperator indien nodig (c.q equals aan /)
-						sr.requestUrl = sr.requestUrl.replace("\\".charAt(0),seperator.charAt(0));
-
-						boolean continueOutput;
-
-						if (sr.requestUrl.substring(0,1).equals(seperator) && path.substring(path.length() - 1).equals(seperator))
-						{
-							// filename should not containt double
-							continueOutput = sw.setFile(path + sr.requestUrl.substring(1));
-						}
-						else
-							continueOutput = sw.setFile(path + sr.requestUrl);
-
-						if (continueOutput)
-						{
-							// connection
-							setKeepAlive(sr.connection, sr.keepAlive);
-
-							// acceptEncoding
-
-							// accept
-
-							// ifModifiedSince
-
-							// String[] userAgent
-
-							sw.out();
-						}
-					}
-					else
-					{
-						// wat hier dan
-					}
+					// filename should not containt double
+					continueOutput = sw.setFile(path + sr.requestUrl.substring(1));
 				}
+				else
+					continueOutput = sw.setFile(path + sr.requestUrl);
 
-				catch (Exception ee)
+				if (continueOutput && sw.checkModifiedSince(sr.ifModifiedSince))
 				{
-					if (ee.getMessage().equals("Connection reset"))
-						break;
-
-					if (ee.getMessage().equals("Read timed out") || ee.getMessage().equals("eof(1)") || ee.getMessage().equals("eof(2)"))
-					{
-						readFails++;
-						if (readFails > 2)
-							break;
-					}
-					//else
-					//{
-						writeDebug(ee.getMessage());
-					//}
+					// connection
+					setKeepAlive(sr.connection, sr.keepAlive);
+					// acceptEncoding
+					// accept
+					// String[] userAgent
+					sw.out();
 				}
 			}
 
@@ -131,15 +100,15 @@ implements Runnable
 			}
 			catch (Exception ee)
 			{
-				ee.printStackTrace();
+				writeDebug(ee.getMessage());
 			}
-			e.printStackTrace();
+			writeDebug(e.getMessage());
 		}
 	}
 
 	public void writeDebug (String debug)
 	{
-		System.out.println("" + requestnumber + ": " + debug);
+		System.out.println("" + requestNumber + ": " + debug);
 	}
 
 	public void setKeepAlive(String connection, int keepAlive) throws IOException
@@ -150,7 +119,7 @@ implements Runnable
 			{
 				if (!socket.getKeepAlive())
 					socket.setKeepAlive(true);
-                    writeDebug("setting Keep Alive: true");
+				writeDebug("setting Keep Alive: true");
 			}
 			else
 			{

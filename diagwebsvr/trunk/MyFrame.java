@@ -3,7 +3,7 @@
  * Project     : Diagnostic WebServer (H7NPR1)
  * Auteur(s)   : Erwin Beukhof  (1149712)
  *               Stephen Maij   (1145244)
- * Datum       : 06-10-2005
+ * Datum       : 10-10-2005
  * Beschrijving: Gecustomiseerde versie van klasse Frame
  */
 
@@ -18,7 +18,6 @@ implements WindowListener
 	private TextField portField;
 	private TextField codeBaseField;
 	private TextArea ioTextArea;
-	private Label fileuploadcompleted;
 	public Server httpServer;
 
 	MyFrame(String title)
@@ -50,17 +49,11 @@ implements WindowListener
 		panelTopRight.add(controlButton);
 		panelTop.add("East", panelTopRight);
 
-		//Panel panelCenter = new Panel();
-		//panelCenter.setLayout(new BorderLayout());
-
-		ioTextArea = new TextArea("Diagnostic WebServer ver. bm_0.1\n\n");
+		ioTextArea = new TextArea("Diagnostic WebServer ver. bm_1.0a\n\n");
 		add("Center", ioTextArea);
-
-		fileuploadcompleted = new Label("not started");
-		add("South", fileuploadcompleted);
+		ioTextArea.setRows(100);
 
 		System.setOut(new PrintStream(new MyOutputStream(this)));
-		//System.setOut(null);
 
 		pack();
 		setSize(getWidth(), 500);
@@ -90,8 +83,8 @@ implements WindowListener
 		// Workaround for lack of auto-scroll in Linux
 		ioTextArea.setCaretPosition(ioTextArea.getText().length());
 		// Limit #rows in textArea content
-		if (ioTextArea.getText().replaceAll("\n","\n\n").length() > ioTextArea.getText().length() + 100)
-			ioTextArea.replaceRange("", 0, ioTextArea.getText().indexOf('\n') + 1);
+		//if (ioTextArea.getText().replaceAll("\n","\n\n").length() > ioTextArea.getText().length() + 100)
+		//	ioTextArea.replaceRange("", 0, ioTextArea.getText().indexOf('\n') + 1);
 	}
 
 	// WindowEvents

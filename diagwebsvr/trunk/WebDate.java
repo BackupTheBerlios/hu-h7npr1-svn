@@ -51,14 +51,15 @@ public class WebDate
 		Date currentDate = new Date();
 		return toWebDate(currentDate);
 	}
-        
-        public static String getDateFromLong(long longdate){
-	// Returns the Date as a String in webformat from a long containing milliseconds time value
-	//
-	// Input:  Long longdate representation a date in milliseconds
-	// Output: String representation of the current Date,
-	//         converted to GMT, in webformat (dd MMM yyyy HH:mm:ss GMT)            
+
+	public static String getDateFromLong(long longdate)
+	{
+		// Returns the Date as a String in webformat from a long containing milliseconds time value
+		//
+		// Input:  Long longdate representation a date in milliseconds
+		// Output: String representation of the current Date,
+		//         converted to GMT, in webformat (dd MMM yyyy HH:mm:ss GMT)            
 		Date currentDate = new Date(longdate);
 		return toWebDate(currentDate);            
-        }
+	}
 }

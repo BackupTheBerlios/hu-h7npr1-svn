@@ -3,8 +3,8 @@
  * Project     : Diagnostic WebServer (H7NPR1)
  * Auteur(s)   : Erwin Beukhof  (1149712)
  *               Stephen Maij   (1145244)
- * Datum       : 19-09-2005
- * Beschrijving: Meerdraadse Server - klasse Service
+ * Datum       : 03-10-2005
+ * Beschrijving: Multithreaded Server - ServiceWriter class
  */
 
 import java.io.*;
@@ -23,22 +23,24 @@ public class ServiceWriter
 
 	private int httpMessageINT;
 	private String httpMessage;
-	private int requestnumber;
+	private int requestNumber;
 
 	private boolean debug;
 
 	/** Creates a new instance of ServiceWriter */
 
-	public ServiceWriter(OutputStream osc, int port, int r, boolean debug) throws IOException
+	public ServiceWriter(OutputStream osc, int port, int r, boolean debug)
+	throws IOException
 	{
 		this.debug = debug;
 		this.port = port;
 		os = osc;
 		//pw = new PrintWriter(os);
-		requestnumber = r;
+		requestNumber = r;
 	}
 
-	public ServiceWriter(OutputStream osc, int port, int r) throws IOException
+	public ServiceWriter(OutputStream osc, int port, int r)
+	throws IOException
 	{
 		this(osc, port,r, false);
 	}
@@ -51,29 +53,41 @@ public class ServiceWriter
 
 	public boolean setFile (String filename)
 	{
-		System.out.println("" + requestnumber + ": " + "setFile( " + filename + " )");
-
+		System.out.println("" + requestNumber + ": " + "setFile( " + filename + " )");
 		bestand = new File(filename);
 		lastModified = WebDate.getDateFromLong(bestand.lastModified());
-
 		length = bestand.length();
-
 		return (bestand.canRead() && bestand.isFile());
 	}
 
-	public void out(String s) throws IOException
+	public boolean checkModifiedSince(String modifiedSince)
+	{
+		if (lastModified.equals(modifiedSince) == true)
+			return false;
+		return true;
+	}
+
+	public void outputStatus (int ok, String message)
+	throws IOException 
+	{
+		out("HTTP/1.1 " + ok + " " +  message);      
+		System.out.println("" + requestNumber + ": " + "HTTP/1.1 " + ok + " " +  message);
+	}
+
+	public void out(String s)
+	throws IOException
 	{ 
 		s += "\n";
 
 		for (int i = 0; i < s.length(); i++)
 			os.write((byte) s.charAt(i));
 
-		//pw.println(s);
 		if (debug)
 			System.out.print("out: " + s);
 	}
 
-	public void out() throws IOException
+	public void out()
+	throws IOException
 	{
 		/* Output file loaded with setFile */
 		if (httpMessageINT < 0)
@@ -82,8 +96,7 @@ public class ServiceWriter
 			httpMessage = "OK";
 
 		String contentType = FileTypeMap.getDefaultFileTypeMap().getContentType(bestand);
-
-		System.out.println("" + requestnumber + ": " + "contentType: " + contentType);
+		System.out.println("" + requestNumber + ": " + "contentType: " + contentType);
 
 		out("HTTP/1.1 " + httpMessageINT + " " +  httpMessage);
 		out("Server:" + InetAddress.getLocalHost().getHostName() );
@@ -93,17 +106,7 @@ public class ServiceWriter
 		out("Last-Modified:" + lastModified);
 
 		FileInputStream fis = new FileInputStream(bestand);
-		BufferedReader br = new BufferedReader(new InputStreamReader(fis));
 
-/*		String tmp;
-		while (true)
-		{
-			tmp = br.readLine();
-			if (tmp == null)
-				break;
-			pw.println(tmp);   
-		}
-*/
 		int tmp;
 		while (true)
 		{
@@ -111,18 +114,13 @@ public class ServiceWriter
 			if (tmp == -1) 
 				break;
 			os.write((byte) tmp);
-			//System.out.print((char) tmp);
-
-			//x++;
-			//int perc = (int) (x / (int) length) * 100;
-			//system.out.print("fileuploadtool" + perc + "% uploading file");
 		}
 
-		//System.out.println("");
-		System.out.println("" + requestnumber + ": " + "Finished uploading file.");
+		System.out.println("" + requestNumber + ": " + "Finished uploading file.");
 	}
 
-	public void close() throws IOException
+	public void close()
+	throws IOException
 	{
 		os.close();
 	}

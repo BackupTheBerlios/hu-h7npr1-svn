@@ -3,7 +3,7 @@
  * Project     : Diagnostic WebServer (H7NPR1)
  * Auteur(s)   : Erwin Beukhof  (1149712)
  *               Stephen Maij   (1145244)
- * Datum       : 19-09-2005
+ * Datum       : 10-10-2005
  * Beschrijving: Meerdraadse Server - klasse ServiceReader
  */
 
@@ -21,6 +21,8 @@ extends FilterInputStream
 	public String requestUrl;
 	public String domainName;
 	public String httpVersion;
+
+	private HashMap requests;
 
 	private Vector input;
 
@@ -61,6 +63,7 @@ extends FilterInputStream
 		input = new Vector();
 		accept = new HashSet();
 		acceptEncoding = new HashSet();
+		requests = new HashMap();
 
 		int x = 0;
 		String newline = "";
@@ -74,13 +77,10 @@ extends FilterInputStream
 			x++;
 			if (x == 1)
 				setRequestLine(newline);
-			else if (!datareceiving)
-				datareceiving = setRequestHeader(newline);
 			else
-				setData(newline);
+				setRequestHeader(newline);
 			if (debug)
 				input.add(""  + x + ": " + newline);
-			x++;
 		}
 
 		if (x == 0)
@@ -106,9 +106,7 @@ extends FilterInputStream
 			System.out.println("" + requestNumber + ": " + "");
 			System.out.println("" + requestNumber + ": " + "HTTP MESSAGE: ");
 			for (Enumeration e = input.elements() ; e.hasMoreElements() ;)
-			{
-				System.out.println(e.nextElement());
-			}
+				System.out.println("" + requestNumber + ":   " + e.nextElement());
 			System.out.println("");
 		}
 
@@ -119,25 +117,23 @@ extends FilterInputStream
 	{
 		StringTokenizer st = new StringTokenizer(s);
 		if (st.countTokens() != 3)
-		{
 			System.out.println("" + requestNumber + ": " + "RequestLine is niet volgens HTTP Protocol");
-		}
 
 		method = st.nextToken();
 		requestUrl = st.nextToken();
+
+		if (requestUrl.indexOf("http://") != -1)
+		{
+			StringTokenizer st2 = new StringTokenizer(requestUrl);
+			st2.nextToken("//");
+         domainName = requestUrl = st2.nextToken("/");
+         requestUrl = "/" + st2.nextToken("");
+		}
+
 		if (requestUrl.equals("*"))
 			requestUrl = "/index.html"; /* no particular resource */
 		else if (requestUrl.equals("/"))
 			requestUrl = "/index.html"; /* request index.html */
-		else if (requestUrl.indexOf("../") != -1)
-			requestUrl = "/errordocs/404.html"; /* request index.html */
-		else if (requestUrl.indexOf("http://") != -1)
-		{
-			StringTokenizer st2 = new StringTokenizer(requestUrl);
-			st2.nextToken("//");
-			domainName = requestUrl = st2.nextToken("/");
-			requestUrl = "/" + st2.nextToken("");
-		}
 
 		httpVersion = st.nextToken();
 		if (debug)
@@ -150,14 +146,18 @@ extends FilterInputStream
 		}
 	}
 
-	public boolean setRequestHeader(String s)
+	public void setRequestHeader(String s)
 	{
 		StringTokenizer st = new StringTokenizer(s, ":");
 		String rh = st.nextToken();
 
+		requests.put(rh, st.nextToken("blablbalbalablabla"));
 		if (debug)
 			System.out.println("setRequestHeader: " + rh );
+	}
 
+	public void handleRequestHeaders()
+	{
 		/*
 		 *
 		 *   Accept-Encoding:gzip,deflate
@@ -168,38 +168,47 @@ extends FilterInputStream
 		 *                     
 		 */
 
-		if (rh.equalsIgnoreCase("Cache-Control"))
-		{}
-		else if (rh.equalsIgnoreCase("Connection"))
-			connection = st.nextToken();
-		else if (rh.equalsIgnoreCase("Date"))
-			dateRequest = st.nextToken(">");    
-		else if (rh.equalsIgnoreCase("Pragma"))
-		{}
-		else if (rh.equalsIgnoreCase("Trailer"))
-		{}
-		else if (rh.equalsIgnoreCase("Transer-Encoding"))
-		{}
-		else if (rh.equalsIgnoreCase("Upgrade"))
-		{}
-		else if (rh.equalsIgnoreCase("Via"))
-		{}
-		else if (rh.equalsIgnoreCase("Warning"))
-		{}
-		else if (rh.equalsIgnoreCase("Accept"))
+		connection = (String) requests.get("Connection");
+		acceptLanguage = (String) requests.get("Accept-Language");
+
+      /*
+       *   User-Agent:mozilla/4.0( compatible
+       *                         ; msie 6.0
+       *                         ; windows nt 5.1
+       *                         ; q312461
+       *                         ; .net clr 1.0.3705
+       *                         )            
+       */
+
+		userAgent = (String) requests.get("User-Agent");
+		/* MUST */
+		contentLength = (String) requests.get("Content-Length");        
+		/* MUST */
+		contentType = (String) requests.get("Content-Type");
+      
+		String request;
+
+		if ((request = (String) requests.get("Date")) != null)
 		{
+			StringTokenizer st = new StringTokenizer(request);
+			dateRequest = st.nextToken(">");
+		}
+
+		if ((request = (String) requests.get("Accept")) != null)
+		{
+			StringTokenizer st = new StringTokenizer(request);
 			String ac = st.nextToken(",");
 			accept.add(ac);
 			while (st.hasMoreTokens())
 			{
 				ac = st.nextToken();
 				accept.add(ac);
-			}            
+			}
 		}
-		else if (rh.equalsIgnoreCase("Accept-Charset"))
-		{}
-		else if (rh.equalsIgnoreCase("Accept-Encoding"))
+
+		if ((request = (String) requests.get("Accept-Encoding")) != null)
 		{
+			StringTokenizer st = new StringTokenizer(request);
 			String ac = st.nextToken(",");
 			acceptEncoding.add(ac);
 			while (st.hasMoreTokens())
@@ -208,107 +217,66 @@ extends FilterInputStream
 				acceptEncoding.add(ac);
 			}
 		}
-		else if (rh.equalsIgnoreCase("Accept-Language"))
-		{
-			acceptLanguage = st.nextToken();
-		}
-		else if (rh.equalsIgnoreCase("Authorization"))
-		{}
-		else if (rh.equalsIgnoreCase("Expect"))
-		{}
-		else if (rh.equalsIgnoreCase("From"))
-		{}
-		else if (rh.equalsIgnoreCase("Host"))
-		{
-			String host = st.nextToken();
 
+		if ((request = (String) requests.get("Host")) != null)
+		{
+			String host = request;
 			if (domainName == null && host != null)
 			{
 				StringTokenizer st2 = new StringTokenizer(host, ":");
 				domainName = st2.nextToken();
 			}
 		}
-		else if (rh.equalsIgnoreCase("If-Match"))
-		{}
-		else if (rh.equalsIgnoreCase("If-Modified-Since"))
+
+		if ((request = (String) requests.get("If-Modified-Since")) != null)
 		{
 			//If-Modified-Since:thu, 13 jun 2002 11:05:22 gmt
+			StringTokenizer st = new StringTokenizer(request);
 			ifModifiedSince = st.nextToken(">");
 		}
-		else if (rh.equalsIgnoreCase("If-None-Match"))
-		{}
-		else if (rh.equalsIgnoreCase("If-Range"))
-		{}
-		else if (rh.equalsIgnoreCase("If-Unmodified-Since"))
-		{}
-		else if (rh.equalsIgnoreCase("Max-Forwards"))
-		{}
-		else if (rh.equalsIgnoreCase("Proxy-Authorization"))
-		{}
-		else if (rh.equalsIgnoreCase("Proxy-Authorization"))
-		{}
-		else if (rh.equalsIgnoreCase("Referer"))
-		{}
-		else if (rh.equalsIgnoreCase("TE"))
-		{}
-		else if (rh.equalsIgnoreCase("User-Agent"))
-		{
-			/*
-			 *      User-Agent:mozilla/4.0( compatible
-			 *                            ; msie 6.0
-			 *                            ; windows nt 5.1
-			 *                            ; q312461
-			 *                            ; .net clr 1.0.3705
-			 *                            )            
-			 */
-			userAgent = st.nextToken();
-		}
-		else if (rh.equalsIgnoreCase("Allow"))
-		{}
-		else if (rh.equalsIgnoreCase("Content-Encoding"))
-		{}
-		else if (rh.equalsIgnoreCase("Content-Language"))
-		{}
-		else if (rh.equalsIgnoreCase("Content-Length"))
-		{
-			/* MUST */
-			contentLength = st.nextToken();
-		}
-		else if (rh.equalsIgnoreCase("Content-Location"))
-		{}
-		else if (rh.equalsIgnoreCase("Content-MD5"))
-		{}
-		else if (rh.equalsIgnoreCase("Content-Range"))
-		{}
-		else if (rh.equalsIgnoreCase("Content-Type"))
-		{
-			/* MUST */
-			contentType = st.nextToken();
-		}
-		else if (rh.equalsIgnoreCase("Expires"))
-		{}
-		else if (rh.equalsIgnoreCase("Last-Modified"))
-		{}
-		else if (rh.equalsIgnoreCase("extension-header"))
-		{}
-		else if (rh.equalsIgnoreCase("Keep-Alive"))
+
+		if ((request = (String) requests.get("Keep-Alive")) != null)
 		{
 			try
 			{
-				keepAlive = Integer.parseInt(st.nextToken());
+				keepAlive = Integer.parseInt(request);
 			}
 			catch (NumberFormatException e)
 			{
 				System.out.println("" + requestNumber + ": " + "Keep-Alive kan niet gezet worden in setRequestHeader");
 			}
 		}
-		else
-		{
-			setData(s);
-			return true;
-		}
 
-		return false;
+/*		if ((request = (String) requests.get("Accept-Charset")) != null){}
+		if ((request = (String) requests.get("Cache-Control")) != null){}        
+		if ((request = (String) requests.get("Pragma")) != null){}
+		if ((request = (String) requests.get("Trailer")) != null){}
+		if ((request = (String) requests.get("Transer-Encoding")) != null){}
+		if ((request = (String) requests.get("Upgrade")) != null){}
+		if ((request = (String) requests.get("Via")) != null){}
+		if ((request = (String) requests.get("Warning")) != null){}
+		if ((request = (String) requests.get("Authorization")) != null){}
+		if ((request = (String) requests.get("Expect")) != null){}
+		if ((request = (String) requests.get("From")) != null){}
+		if ((request = (String) requests.get("If-Match")) != null){}
+		if ((request = (String) requests.get("If-None-Match")) != null){}
+		if ((request = (String) requests.get("If-Range")) != null){}
+		if ((request = (String) requests.get("If-Unmodified-Since")) != null){}
+		if ((request = (String) requests.get("Max-Forwards")) != null){}
+		if ((request = (String) requests.get("Proxy-Authorization")) != null){}
+		if ((request = (String) requests.get("Proxy-Authorization")) != null){}
+		if ((request = (String) requests.get("Referer")) != null){}
+		if ((request = (String) requests.get("TE")) != null){}
+		if ((request = (String) requests.get("Allow")) != null){}
+		if ((request = (String) requests.get("Content-Encoding")) != null){}
+		if ((request = (String) requests.get("Content-Language")) != null){}
+		if ((request = (String) requests.get("Content-Location")) != null){}
+		if ((request = (String) requests.get("Content-MD5")) != null){}
+		if ((request = (String) requests.get("Content-Range")) != null){}
+		if ((request = (String) requests.get("Expires")) != null){}
+		if ((request = (String) requests.get("Last-Modified")) != null){}
+		if ((request = (String) requests.get("extension-header")) != null){}
+*/
 	}  
 
 	public void setData(String s)
