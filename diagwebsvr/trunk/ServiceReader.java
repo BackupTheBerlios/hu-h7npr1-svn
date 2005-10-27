@@ -3,7 +3,7 @@
  * Project     : Diagnostic WebServer (H7NPR1)
  * Auteur(s)   : Erwin Beukhof  (1149712)
  *               Stephen Maij   (1145244)
- * Datum       : 10-10-2005
+ * Datum       : 26-10-2005
  * Beschrijving: Meerdraadse Server - klasse ServiceReader
  */
 
@@ -23,6 +23,8 @@ extends FilterInputStream
 	public String httpVersion;
 
 	private HashMap requests;
+
+	private HashSet commands;
 
 	private Vector input;
 
@@ -45,12 +47,53 @@ extends FilterInputStream
 	public ServiceReader(InputStream is, int port, int r, boolean debug)
 	throws IOException
 	{
-		super(is); 
+		super(is);
 		this.debug = debug;
 		this.port = port;
 		requestNumber = r;
-    }
-    
+
+		commands = new HashSet();
+		commands.add("Connection");
+		commands.add("Accept-Language");
+		commands.add("User-Agent");
+		commands.add("Content-Length");
+		commands.add("Content-Type");
+		commands.add("Date");
+		commands.add("Accept");
+		commands.add("Accept-Encoding");
+		commands.add("Host");
+		commands.add("If-Modified-Since");
+		commands.add("Keep-Alive");
+		commands.add("Accept-Charset");
+		commands.add("Cache-Control");
+		commands.add("Pragma");
+		commands.add("Trailer");
+		commands.add("Transer-Encoding");
+		commands.add("Upgrade");
+		commands.add("Via");
+		commands.add("Warning");
+		commands.add("Authorization");
+		commands.add("Expect");
+		commands.add("From");
+		commands.add("If-Match");
+		commands.add("If-None-Match");
+		commands.add("If-Range");
+		commands.add("If-Unmodified-Since");
+		commands.add("Max-Forwards");
+		commands.add("Proxy-Authorization");
+		commands.add("Proxy-Authorization");
+		commands.add("Referer");
+		commands.add("Allow");
+		commands.add("Content-Encoding");
+		commands.add("Content-Language");
+		commands.add("Content-Location");
+		commands.add("Content-MD5");
+		commands.add("Content-Range");
+		commands.add("Expires");
+		commands.add("Last-Modified");     
+		commands.add("extension-header");
+	}
+
 	public ServiceReader(InputStream is, int port, int r)
 	throws IOException
 	{
@@ -66,25 +109,29 @@ extends FilterInputStream
 		requests = new HashMap();
 
 		int x = 0;
-		String newline = "";
-		boolean datareceiving = false;
+		String newLine = "";
+		boolean dataReceiving = false;
 
 		while (true)
 		{ //available();
-			newline = readLine();
-			if (newline == null)
+			newLine = readLine();
+			if (newLine == null)
 				break;
 			x++;
 			if (x == 1)
-				setRequestLine(newline);
+				setRequestLine(newLine);
+			else if (!dataReceiving)
+				dataReceiving = setRequestHeader(newLine);
 			else
-				setRequestHeader(newline);
+				setData(newLine);
 			if (debug)
-				input.add(""  + x + ": " + newline);
+				input.add(""  + x + ": " + newLine);
 		}
 
 		if (x == 0)
 			return false;
+		
+		handleRequestsHeaders();
 
 		if (debug)
 		{
@@ -146,17 +193,25 @@ extends FilterInputStream
 		}
 	}
 
-	public void setRequestHeader(String s)
+	public boolean setRequestHeader(String s)
 	{
 		StringTokenizer st = new StringTokenizer(s, ":");
 		String rh = st.nextToken();
 
+		if (!commands.contains(rh))
+		{
+			setData(s);
+			return true;
+		}
+
 		requests.put(rh, st.nextToken("blablbalbalablabla"));
 		if (debug)
 			System.out.println("setRequestHeader: " + rh );
+
+		return false;
 	}
 
-	public void handleRequestHeaders()
+	public void handleRequestsHeaders()
 	{
 		/*
 		 *
