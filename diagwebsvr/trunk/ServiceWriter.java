@@ -3,7 +3,7 @@
  * Project     : Diagnostic WebServer (H7NPR1)
  * Auteur(s)   : Erwin Beukhof  (1149712)
  *               Stephen Maij   (1145244)
- * Datum       : 03-10-2005
+ * Datum       : 15-12-2005
  * Beschrijving: Multithreaded Server - ServiceWriter class
  */
 
@@ -106,15 +106,11 @@ public class ServiceWriter
 		out("Last-Modified:" + lastModified);
 
 		FileInputStream fis = new FileInputStream(bestand);
+		byte[] dataBuffer = new byte[1024];
+		int numberOfBytes = 0;
 
-		int tmp;
-		while (true)
-		{
-			tmp = fis.read();
-			if (tmp == -1) 
-				break;
-			os.write((byte) tmp);
-		}
+		while ((numberOfBytes = fis.read(dataBuffer)) != -1) // Read until EOF 
+			os.write(dataBuffer, 0, numberOfBytes);
 
 		System.out.println("" + requestNumber + ": " + "Finished uploading file.");
 	}
