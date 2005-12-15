@@ -39,7 +39,7 @@ implements WindowListener
 		
 		Panel panelTopCenter = new Panel();
 		panelTopCenter.setLayout(new FlowLayout(FlowLayout.LEFT));
-		codeBaseField = new TextField(MyFileSystem.getCurrentDir() + File.separator + "www");
+		codeBaseField = new TextField(MyFileSystem.getCurrentDir());
                 
 		panelTopCenter.add(codeBaseField);
 		panelTop.add("Center", panelTopCenter);
