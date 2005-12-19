@@ -11,13 +11,13 @@ import java.io.File;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
-import java.util.Hashtable;
+import java.util.HashMap;
 import java.util.HashSet;
 
 class Server
 implements Runnable
 {
-	static final boolean DEBUG_MODE = false;
+	static final boolean DEBUG_MODE = true;
 
 	private int port;
 	private int backLog;
@@ -27,7 +27,7 @@ implements Runnable
 	static int timeout = 5000;
 	/* the web server's virtual root */
 	static File virtualRoot = null;
-	static Hashtable contentTypeMap;
+	static HashMap contentTypeMap;
 	static HashSet commandList;
 
 	public Server(int port, int backLog, String codeBase)
@@ -58,7 +58,7 @@ implements Runnable
 		}
 		catch (SocketException se)
 		{
-			writeDebug("Socket Closed");
+			writeDebug("\nSocket Closed");
 		}
 		catch (Exception e)
 		{
@@ -81,7 +81,7 @@ implements Runnable
 	/* mapping of file extensions to content-types */
 	private static void fillContentTypeMap()
 	{
-		contentTypeMap = new Hashtable();
+		contentTypeMap = new HashMap();
 		contentTypeMap.put("", "content/unknown");
 		contentTypeMap.put(".uu", "application/octet-stream");
 		contentTypeMap.put(".exe", "application/octet-stream");

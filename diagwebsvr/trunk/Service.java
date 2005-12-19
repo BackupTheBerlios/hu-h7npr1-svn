@@ -72,7 +72,7 @@ implements HttpConstants, Runnable
 
 		try
 		{
-			String requestType = sr.getRequest();
+			String requestType = sr.getRequestLines();
 			int index = 0;
 			/* are we doing a GET or a HEAD */
 			if (!requestType.equals("GET") && !requestType.equals("HEAD"))
@@ -85,7 +85,7 @@ implements HttpConstants, Runnable
 				return;
 			}
 
-			File target = new File(Server.virtualRoot, (String)sr.requestContents.get("fileName"));
+			File target = new File(Server.virtualRoot, (String)sr.requestMap.get("Request-URI"));
 			writeDebug("From " + socket.getInetAddress().getHostAddress() + ": " +
 					requestType + " " + target.getAbsolutePath());
 			/* If a directory is requested, send index.html
