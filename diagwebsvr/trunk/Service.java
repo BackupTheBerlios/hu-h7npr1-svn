@@ -3,139 +3,134 @@
  * Project     : Diagnostic WebServer (H7NPR1)
  * Auteur(s)   : Erwin Beukhof  (1149712)
  *               Stephen Maij   (1145244)
- * Datum       : 13-09-2005
+ * Datum       : 19-12-2005
  * Beschrijving: Meerdraadse Server - klasse Service
  */
 
 import java.net.Socket;
 import java.io.*;
-//import java.lang.*;
 
 public class Service
-implements Runnable
+implements HttpConstants, Runnable
 {
+	static final int BUFFER_SIZE = 1024;
+	static final byte[] EOL = {(byte)'\r', (byte)'\n' };
+
 	private Socket socket = null;
-	private String path;
+	private String codeBase;
 	private String separator;
 	private int requestNumber;
 
-	public Service(Socket newSocket, String path, int r)
+   public Service(Socket newSocket, int requestNumber)
 	{
-		requestNumber = r;            
-		writeDebug("Service ("+newSocket+")");
+		writeDebug("Service (" + newSocket + ")");
 		socket = newSocket;
-		this.path = path;
+		this.requestNumber = requestNumber;
 	}
 
 	public void run()
 	{
-		ServiceReader sr;
-		ServiceWriter sw;
-		int readFails = 0;
+		if (socket == null)
+		{
+			/* nothing to do */
+			try
+			{
+				wait();
+			}
+			catch (InterruptedException e)
+			{
+				/* should not happen */
+				e.printStackTrace();
+			}
+		}
 
 		try
 		{
-			sr = new ServiceReader(socket.getInputStream(), socket.getLocalPort(), requestNumber, false);
-			sw = new ServiceWriter(socket.getOutputStream(), socket.getLocalPort(), requestNumber, false);
-
-			if (sr.readRequest())
-			{
-				//  Afhandeling output    
-				/* method check */
-				if (sr.method.equalsIgnoreCase("GET"))
-				{} // GET hoeft nog niets speciaals
-				else
-					sw.outputStatus(500, "Type not supported");
-
-				if (sr.requestUrl.indexOf("../") != -1)
-					sw.outputStatus(404, "Not Found");
-
-				/* requestUrl */
-				//os dependend separator
-				//seperator = System.getProperty("file.seperator");
-				separator = File.separator;
-
-				//replace \ met de os dependend separator indien nodig (c.q equals aan /)
-            if (separator.equals("/"))
-            	sr.requestUrl = sr.requestUrl.replace("\\".charAt(0),separator.charAt(0));
-            else
-            	sr.requestUrl = sr.requestUrl.replace("/".charAt(0),separator.charAt(0));
-
-				boolean continueOutput;
-
-				if (sr.requestUrl.substring(0,1).equals(separator) && path.substring(path.length() - 1).equals(separator))
-				{
-					// filename should not containt double
-					continueOutput = sw.setFile(path + sr.requestUrl.substring(1));
-				}
-				else
-					continueOutput = sw.setFile(path + sr.requestUrl);
-
-				if (continueOutput && sw.checkModifiedSince(sr.ifModifiedSince))
-				{
-					// connection
-					setKeepAlive(sr.connection, sr.keepAlive);
-					// acceptEncoding
-					// accept
-					// String[] userAgent
-					sw.out();
-				}
-			}
-
-			if (socket.getKeepAlive())
-				writeDebug("Connection closed by server. Could not read");
-			else
-				writeDebug("Connection closed by server. Request ended");
-
-			sr.close();
-			sw.close();
-			socket.close();
+			handleClient();
 		}
-
 		catch (Exception e)
 		{
-			try
-			{
-				socket.close();
-			}
-			catch (Exception ee)
-			{
-				writeDebug(ee.getMessage());
-			}
-			writeDebug(e.getMessage());
+			/* should not happen */
+			e.printStackTrace();
 		}
+
+		socket = null;
 	}
 
-	public void writeDebug (String debug)
+	void handleClient()
+	throws IOException
 	{
-		System.out.println("" + requestNumber + ": " + debug);
-	}
+		ServiceReader sr = new ServiceReader(new BufferedInputStream(socket.getInputStream()), requestNumber);
+		ServiceWriter sw = new ServiceWriter(socket.getOutputStream(), requestNumber);
 
-	public void setKeepAlive(String connection, int keepAlive) throws IOException
-	{
-		if (connection != null)
+		/* we will only block in read for this many milliseconds
+		 * before we fail with java.io.InterruptedIOException,
+		 * at which point we will abandon the connection.
+		 */
+		socket.setSoTimeout(Server.timeout);
+		socket.setTcpNoDelay(true);
+
+		try
 		{
-			if (connection.trim().equalsIgnoreCase("keep-alive"))
+			String requestType = sr.getRequest();
+			int index = 0;
+			/* are we doing a GET or a HEAD */
+			if (!requestType.equals("GET") && !requestType.equals("HEAD"))
 			{
-				if (!socket.getKeepAlive())
-					socket.setKeepAlive(true);
-				writeDebug("setting Keep Alive: true");
+				/* We don't support this method
+				 * Sending code 405 as a response
+				 */
+				sw.send405(requestType);
+				socket.close();
+				return;
 			}
-			else
+
+			File target = new File(Server.virtualRoot, (String)sr.requestContents.get("fileName"));
+			writeDebug("From " + socket.getInetAddress().getHostAddress() + ": " +
+					requestType + " " + target.getAbsolutePath());
+			/* If a directory is requested, send index.html
+			 * by default (is available)
+			 */
+			if (target.isDirectory())
 			{
-				if (socket.getKeepAlive())
+				File indexFile = new File(target, "index.html");
+				if (indexFile.exists())
 				{
-					socket.setKeepAlive(false);
-					writeDebug("setting Keep Alive: false");
+					target = indexFile;
+				}
+			}
+			/* Sending headers,
+			 * returning 'true' if operation succeeded
+			 */
+			boolean OK = sw.sendHeaders(target);
+			/* Response to GET request,
+			 * sending directory listing,
+			 * file or code 404 (not found)
+			 */
+			if (requestType.equals("GET"))
+			{
+				if (OK && target.isDirectory())
+				{
+					sw.sendDirectoryListing(target);
+				}
+				else if (OK)
+				{
+					sw.sendFile(target);
+				}
+				else
+				{
+					sw.send404();
 				}
 			}
 		}
-		else
-			socket.setKeepAlive(true);
+		finally
+		{
+			socket.close();
+		}
+	}
 
-		if (keepAlive > 0)
-			socket.setSoTimeout(keepAlive);
-		else
-			socket.setSoTimeout(600);
+	private void writeDebug(String debug)
+	{
+		System.out.println("" + requestNumber + ": " + debug);
 	}
 }

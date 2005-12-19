@@ -3,121 +3,181 @@
  * Project     : Diagnostic WebServer (H7NPR1)
  * Auteur(s)   : Erwin Beukhof  (1149712)
  *               Stephen Maij   (1145244)
- * Datum       : 15-12-2005
+ * Datum       : 19-12-2005
  * Beschrijving: Multithreaded Server - ServiceWriter class
  */
 
 import java.io.*;
-import java.net.*;
-import javax.activation.FileTypeMap;
+//import java.net.*;
+import java.util.Date;
 
 public class ServiceWriter
+implements HttpConstants
 {
-	private int port;
+   static final byte[] EOL = {(byte)'\r', (byte)'\n' };
 
-	private OutputStream os;
-	//private PrintWriter pw;
-	private File bestand;
-	private String lastModified;
-	private long length;
-
-	private int httpMessageINT;
-	private String httpMessage;
+	private PrintStream ps;
 	private int requestNumber;
+	private boolean debugMode;
 
-	private boolean debug;
+	/* buffer to use for requests */
+	byte[] requestBuffer;
 
 	/** Creates a new instance of ServiceWriter */
-
-	public ServiceWriter(OutputStream osc, int port, int r, boolean debug)
+	public ServiceWriter(OutputStream newOS, int requestNumber, boolean debugMode)
 	throws IOException
 	{
-		this.debug = debug;
-		this.port = port;
-		os = osc;
-		//pw = new PrintWriter(os);
-		requestNumber = r;
+		ps = new PrintStream(newOS);
+		this.requestNumber = requestNumber;
+		this.debugMode = debugMode;
+		requestBuffer = new byte[Service.BUFFER_SIZE];
 	}
 
-	public ServiceWriter(OutputStream osc, int port, int r)
+	public ServiceWriter(OutputStream newOS, int requestNumber)
 	throws IOException
 	{
-		this(osc, port,r, false);
+		this(newOS, requestNumber, false);
 	}
 
-	public void setStatus(int ok, String message)
-	{
-		httpMessageINT = ok;
-		httpMessage = message;
-	}
-
-	public boolean setFile (String filename)
-	{
-		System.out.println("" + requestNumber + ": " + "setFile( " + filename + " )");
-		bestand = new File(filename);
-		lastModified = WebDate.getDateFromLong(bestand.lastModified());
-		length = bestand.length();
-		return (bestand.canRead() && bestand.isFile());
-	}
-
-	public boolean checkModifiedSince(String modifiedSince)
-	{
-		if (lastModified.equals(modifiedSince) == true)
-			return false;
-		return true;
-	}
-
-	public void outputStatus (int ok, String message)
-	throws IOException 
-	{
-		out("HTTP/1.1 " + ok + " " +  message);      
-		System.out.println("" + requestNumber + ": " + "HTTP/1.1 " + ok + " " +  message);
-	}
-
-	public void out(String s)
-	throws IOException
-	{ 
-		s += "\n";
-
-		for (int i = 0; i < s.length(); i++)
-			os.write((byte) s.charAt(i));
-
-		if (debug)
-			System.out.print("out: " + s);
-	}
-
-	public void out()
+	boolean sendHeaders(File target)
 	throws IOException
 	{
-		/* Output file loaded with setFile */
-		if (httpMessageINT < 0)
-			httpMessageINT = 200;
-		if (httpMessage == null)
-			httpMessage = "OK";
-
-		String contentType = FileTypeMap.getDefaultFileTypeMap().getContentType(bestand);
-		System.out.println("" + requestNumber + ": " + "contentType: " + contentType);
-
-		out("HTTP/1.1 " + httpMessageINT + " " +  httpMessage);
-		out("Server:" + InetAddress.getLocalHost().getHostName() );
-		out("Date:" + WebDate.getCurrent());
-		out("Content-Type:" + contentType);
-		out("Content-Length:" + length);
-		out("Last-Modified:" + lastModified);
-
-		FileInputStream fis = new FileInputStream(bestand);
-		byte[] dataBuffer = new byte[1024];
-		int numberOfBytes = 0;
-
-		while ((numberOfBytes = fis.read(dataBuffer)) != -1) // Read until EOF 
-			os.write(dataBuffer, 0, numberOfBytes);
-
-		System.out.println("" + requestNumber + ": " + "Finished uploading file.");
+		boolean targetExists = target.exists();
+		int responseCode = 0;
+		String responseText = "";
+		/****************/
+		/*** HTTP/x.y ***/
+		/****************/
+		if (!targetExists)
+		{
+			responseCode = HTTP_NOT_FOUND;
+			responseText = "HTTP/1.1 " + HTTP_NOT_FOUND + " not found";
+			ps.print(responseText);
+			ps.write(EOL);
+		}
+		else
+		{
+			responseCode = HTTP_OK;
+			responseText = "HTTP/1.1 " + HTTP_OK+" OK";
+			ps.print(responseText);
+			ps.write(EOL);
+		}
+		writeDebug("Sent: " + responseText);
+		/****************/
+		/**** Server ****/
+		/****************/
+		ps.print("Server: Diagnostic WebServer");
+		ps.write(EOL);
+		/****************/
+		/***** Date *****/
+		/****************/
+		ps.print("Date: " + WebDate.getCurrent());
+		ps.write(EOL);
+		/********************/
+		/** Content-length **/
+		/** Last Modified ***/
+		/*** Content-type ***/
+		/********************/
+		if (targetExists)
+		{
+			if (!target.isDirectory())
+			{
+				ps.print("Content-length: "+target.length());
+				ps.write(EOL);
+				ps.print("Last Modified: " + (new Date(target.lastModified())));
+				ps.write(EOL);
+				String name = target.getName();
+				int index = name.lastIndexOf('.');
+				String contentType = null;
+				if (index > 0)
+				{
+					contentType = (String) Server.contentTypeMap.get(name.substring(index));
+				}
+				if (contentType == null)
+				{
+					contentType = "unknown/unknown";
+				}
+				responseText = "Content-type: " + contentType;
+				ps.print(responseText);
+				ps.write(EOL);
+			}
+			else
+			{
+				responseText = "Content-type: text/html";
+				ps.print(responseText);
+				ps.write(EOL);
+			}
+			writeDebug("Sent: " + responseText);
+		}
+		return targetExists;
 	}
 
-	public void close()
+	void send404()
 	throws IOException
 	{
-		os.close();
+		ps.write(EOL);
+		ps.write(EOL);
+		ps.println("Not Found\n\nThe requested resource was not found.\n");
+	}
+
+	void send405(String methodType)
+	throws IOException
+	{
+		String responseText = "HTTP/1.0 " + HTTP_BAD_METHOD + 
+			" unsupported method type: " + methodType;
+		ps.print(responseText);
+		ps.write(EOL);
+		ps.flush();
+		writeDebug("Sent: " + responseText);
+	}
+
+	void sendFile(File target)
+	throws IOException
+	{
+		String targetAbsolutePath = target.getAbsolutePath();
+		writeDebug("About to send file: " + targetAbsolutePath);
+		ps.write(EOL);
+		InputStream is = new FileInputStream(targetAbsolutePath);
+		try
+		{
+			int byteCount;
+			while ((byteCount = is.read(requestBuffer)) > 0)
+			{
+				ps.write(requestBuffer, 0, byteCount);
+			}
+			writeDebug("Finished uploading file.");
+		}
+		finally
+		{
+			is.close();
+		}
+	}
+
+	void sendDirectoryListing(File target)
+	throws IOException
+	{
+		ps.write(EOL);
+		ps.println("<TITLE>Directory listing</TITLE><P>\n");
+		ps.println("<A HREF=\"..\">Parent Directory</A><BR>\n");
+		String[] list = target.list();
+		for (int i = 0; list != null && i < list.length; i++)
+		{
+			File f = new File(target, list[i]);
+			if (f.isDirectory())
+			{
+				ps.println("<A HREF=\""+list[i]+"/\">"+list[i]+"/</A><BR>");
+			}
+			else
+			{
+				ps.println("<A HREF=\""+list[i]+"\">"+list[i]+"</A><BR");
+			}
+		}
+		ps.println("<P><HR><BR><I>" + (new Date()) + "</I>");
+		writeDebug("Finished sending directory listing.");
+	}
+
+	private void writeDebug(String debugText)
+	{
+		System.out.println("" + requestNumber + ": " + debugText);
 	}
 }

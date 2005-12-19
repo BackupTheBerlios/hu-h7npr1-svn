@@ -3,7 +3,7 @@
  * Project     : Diagnostic WebServer (H7NPR1)
  * Auteur(s)   : Erwin Beukhof  (1149712)
  *               Stephen Maij   (1145244)
- * Datum       : 26-10-2005
+ * Datum       : 19-12-2005
  * Beschrijving: Meerdraadse Server - klasse ServiceReader
  */
 
@@ -11,20 +11,29 @@ import java.io.*;
 //import java.net.SocketException;
 import java.util.*;
 
-public class ServiceReader 
-extends FilterInputStream
+public class ServiceReader
+//extends FilterInputStream
 {
-	private int port;
+	private InputStream is;
 	private int requestNumber;
 
+	/* buffer to use for requests */
+	byte[] requestBuffer;
+	
+	/* A place to store the header contents */
+	Hashtable requestContents;
+
+
+	
+	
+	
+	
 	public String method;
 	public String requestUrl;
 	public String domainName;
 	public String httpVersion;
 
 	private HashMap requests;
-
-	private HashSet commands;
 
 	private Vector input;
 
@@ -41,68 +50,121 @@ extends FilterInputStream
 	public String contentLength;
 	public String contentType;
 
-	private boolean debug = false;
-
 	/** Creates a new instance of ServiceReader */
-	public ServiceReader(InputStream is, int port, int r, boolean debug)
+	public ServiceReader(InputStream is, int requestNumber)
 	throws IOException
 	{
-		super(is);
-		this.debug = debug;
-		this.port = port;
-		requestNumber = r;
-
-		commands = new HashSet();
-		commands.add("Connection");
-		commands.add("Accept-Language");
-		commands.add("User-Agent");
-		commands.add("Content-Length");
-		commands.add("Content-Type");
-		commands.add("Date");
-		commands.add("Accept");
-		commands.add("Accept-Encoding");
-		commands.add("Host");
-		commands.add("If-Modified-Since");
-		commands.add("Keep-Alive");
-		commands.add("Accept-Charset");
-		commands.add("Cache-Control");
-		commands.add("Pragma");
-		commands.add("Trailer");
-		commands.add("Transer-Encoding");
-		commands.add("Upgrade");
-		commands.add("Via");
-		commands.add("Warning");
-		commands.add("Authorization");
-		commands.add("Expect");
-		commands.add("From");
-		commands.add("If-Match");
-		commands.add("If-None-Match");
-		commands.add("If-Range");
-		commands.add("If-Unmodified-Since");
-		commands.add("Max-Forwards");
-		commands.add("Proxy-Authorization");
-		commands.add("Proxy-Authorization");
-		commands.add("Referer");
-		commands.add("Allow");
-		commands.add("Content-Encoding");
-		commands.add("Content-Language");
-		commands.add("Content-Location");
-		commands.add("Content-MD5");
-		commands.add("Content-Range");
-		commands.add("Expires");
-		commands.add("Last-Modified");     
-		commands.add("extension-header");
+		this.is = is;
+		this.requestNumber = requestNumber;
+		requestBuffer = new byte[Service.BUFFER_SIZE];
+		requestContents = new Hashtable();
 	}
 
-	public ServiceReader(InputStream is, int port, int r)
+	public Hashtable getRequestContents()
+	{
+		Hashtable requestContents = new Hashtable();
+		
+		
+		return requestContents;
+	}
+
+	public String getRequest()
 	throws IOException
 	{
-		this(is, port, r, false);
+		/* We only support HTTP GET/HEAD, and don't
+		 * support any fancy HTTP options,
+		 */
+		requestContents.clear();
+		int totalBytesRead = 0, bytesRead = 0;
+
+outerloop:
+		while (totalBytesRead < Service.BUFFER_SIZE)
+		{
+			bytesRead = is.read(requestBuffer, totalBytesRead, Service.BUFFER_SIZE - totalBytesRead);
+			if (bytesRead == -1)
+			{
+				/* EOF */
+				if (Server.DEBUG_MODE) writeDebug("[DEBUG] Request Type Not Available");
+				return "Request Type Not Available";
+			}
+			int index = totalBytesRead;
+			totalBytesRead += bytesRead;
+			for (; index < totalBytesRead; index++)
+			{
+				if (requestBuffer[index] == (byte)'\n' || requestBuffer[index] == (byte)'\r')
+				{
+					/* read one line */
+					if (Server.DEBUG_MODE) writeDebug("[DEBUG] break outerloop");
+					break outerloop;
+				}
+			}
+		}
+
+		/* beginning of file name */
+		int fileNameStartIndex = 0;
+		if (requestBuffer[0] == (byte)'G' &&
+				requestBuffer[1] == (byte)'E' &&
+				requestBuffer[2] == (byte)'T' &&
+				requestBuffer[3] == (byte)' ')
+		{
+			requestContents.put("requestType", "GET");
+			fileNameStartIndex = 4;
+		}
+		else if (requestBuffer[0] == (byte)'H' &&
+				requestBuffer[1] == (byte)'E' &&
+				requestBuffer[2] == (byte)'A' &&
+				requestBuffer[3] == (byte)'D' &&
+				requestBuffer[4] == (byte)' ')
+		{
+			requestContents.put("requestType", "HEAD");
+			fileNameStartIndex = 5;
+		}
+		else
+		{
+			/* We don't support this method */
+			requestContents.put("requestType", new String(requestBuffer).substring(0, 5));
+			if (Server.DEBUG_MODE) writeDebug("[DEBUG] requestType == " + requestContents.get("requestType"));
+			return (String)requestContents.get("requestType");
+		}
+		if (Server.DEBUG_MODE) writeDebug("[DEBUG] requestType == " + requestContents.get("requestType"));
+
+		int i = 0;
+		/* find the file name, from:
+		 * GET /foo/bar.html HTTP/1.0
+		 * extract "/foo/bar.html"
+		 */
+		for (i = fileNameStartIndex; i < totalBytesRead; i++)
+		{
+			if (requestBuffer[i] == (byte)' ')
+			{
+				break;
+			}
+		}
+
+		/* Replace all separator characters with
+		 * the OS specific type
+		 * (replacing '/' with '\' if necessary)
+		 */
+		String fileName = (new String(requestBuffer, fileNameStartIndex, i-fileNameStartIndex)).replace('/', File.separatorChar);
+		if (fileName.startsWith(File.separator))
+			fileName = fileName.substring(1);
+		requestContents.put("fileName", fileName);
+
+		return (String)requestContents.get("requestType");
 	}
 
-	public boolean readRequest()
+	private void writeDebug(String debugText)
+	{
+		System.out.println("" + requestNumber + ": " + debugText);
+	}
+
+	/**************************************************/
+	/********** A LOTTA OLD STUFF AFTER THIS **********/
+	/**************************************************/
+
+	public boolean readRequest_old()
 	throws IOException
-	{  
+	{
 		input = new Vector();
 		accept = new HashSet();
 		acceptEncoding = new HashSet();
@@ -113,8 +175,8 @@ extends FilterInputStream
 		boolean dataReceiving = false;
 
 		while (true)
-		{ //available();
-			newLine = readLine();
+		{
+//			newLine = readLine();
 			if (newLine == null)
 				break;
 			x++;
@@ -123,8 +185,8 @@ extends FilterInputStream
 			else if (!dataReceiving)
 				dataReceiving = setRequestHeader(newLine);
 			else
-				setData(newLine);
-			if (debug)
+//				setData(newLine);
+			if (Server.DEBUG_MODE)
 				input.add(""  + x + ": " + newLine);
 		}
 
@@ -133,15 +195,12 @@ extends FilterInputStream
 		
 		handleRequestsHeaders();
 
-		if (debug)
+		if (Server.DEBUG_MODE)
 		{
 			if (dateRequest != null)
 				System.out.println("" + requestNumber + ": " + "dateRequest: " + dateRequest);
 			if (connection != null)
 				System.out.println("" + requestNumber + ": " + "connection: " + connection);
-
-			//HashSet acceptEncoding;
-			//HashSet accept;
 
 			if (acceptLanguage != null) System.out.println("" + requestNumber + ": " + "acceptLanguage: " + acceptLanguage);
 			if (ifModifiedSince != null) System.out.println("" + requestNumber + ": " + "ifModifiedSince: " + ifModifiedSince);
@@ -183,7 +242,7 @@ extends FilterInputStream
 			requestUrl = "/index.html"; /* request index.html */
 
 		httpVersion = st.nextToken();
-		if (debug)
+		if (Server.DEBUG_MODE)
 		{
 			System.out.println("" + requestNumber + ": " + "Methode: " + method);
 			System.out.println("" + requestNumber + ": " + "Domainname: " + domainName);
@@ -198,14 +257,14 @@ extends FilterInputStream
 		StringTokenizer st = new StringTokenizer(s, ":");
 		String rh = st.nextToken();
 
-		if (!commands.contains(rh))
+		if (!Server.commandList.contains(rh))
 		{
-			setData(s);
+//			setData(s);
 			return true;
 		}
 
 		requests.put(rh, st.nextToken("blablbalbalablabla"));
-		if (debug)
+		if (Server.DEBUG_MODE)
 			System.out.println("setRequestHeader: " + rh );
 
 		return false;
@@ -301,62 +360,5 @@ extends FilterInputStream
 				System.out.println("" + requestNumber + ": " + "Keep-Alive kan niet gezet worden in setRequestHeader");
 			}
 		}
-
-/*		if ((request = (String) requests.get("Accept-Charset")) != null){}
-		if ((request = (String) requests.get("Cache-Control")) != null){}        
-		if ((request = (String) requests.get("Pragma")) != null){}
-		if ((request = (String) requests.get("Trailer")) != null){}
-		if ((request = (String) requests.get("Transer-Encoding")) != null){}
-		if ((request = (String) requests.get("Upgrade")) != null){}
-		if ((request = (String) requests.get("Via")) != null){}
-		if ((request = (String) requests.get("Warning")) != null){}
-		if ((request = (String) requests.get("Authorization")) != null){}
-		if ((request = (String) requests.get("Expect")) != null){}
-		if ((request = (String) requests.get("From")) != null){}
-		if ((request = (String) requests.get("If-Match")) != null){}
-		if ((request = (String) requests.get("If-None-Match")) != null){}
-		if ((request = (String) requests.get("If-Range")) != null){}
-		if ((request = (String) requests.get("If-Unmodified-Since")) != null){}
-		if ((request = (String) requests.get("Max-Forwards")) != null){}
-		if ((request = (String) requests.get("Proxy-Authorization")) != null){}
-		if ((request = (String) requests.get("Proxy-Authorization")) != null){}
-		if ((request = (String) requests.get("Referer")) != null){}
-		if ((request = (String) requests.get("TE")) != null){}
-		if ((request = (String) requests.get("Allow")) != null){}
-		if ((request = (String) requests.get("Content-Encoding")) != null){}
-		if ((request = (String) requests.get("Content-Language")) != null){}
-		if ((request = (String) requests.get("Content-Location")) != null){}
-		if ((request = (String) requests.get("Content-MD5")) != null){}
-		if ((request = (String) requests.get("Content-Range")) != null){}
-		if ((request = (String) requests.get("Expires")) != null){}
-		if ((request = (String) requests.get("Last-Modified")) != null){}
-		if ((request = (String) requests.get("extension-header")) != null){}
-*/
-	}  
-
-	public void setData(String s)
-	{
-		/*HOW DO THIS THING!*/
-	}
-
-	public String readLine() throws IOException
-	{
-		int c1 = read();
-		if (c1 == -1) throw new IOException("eof(1)");
-
-		int c2 = read();
-		if (c2 == -1) throw new IOException("eof(2)");
-
-		String ret = "";
-		while (c1 != '\r' || c2 != '\n')
-		{
-			ret = ret + (char)c1;
-			c1 = c2;
-			c2 = read();
-			if (c2 == -1)
-				throw new IOException("eof(3)");
-		}
-
-		return ret.length()>0 ? ret : null;
 	}
 }

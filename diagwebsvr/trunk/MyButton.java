@@ -3,7 +3,7 @@
  * Project     : Diagnostic WebServer (H7NPR1)
  * Auteur(s)   : Erwin Beukhof  (1149712)
  *               Stephen Maij   (1145244)
- * Datum       : 13-09-2005
+ * Datum       : 18-12-2005
  * Beschrijving: Gecustomiseerde versie van klasse Button
  */
 
@@ -54,8 +54,8 @@ implements MouseListener
 		{
 			// Start Server
 			parentObject.httpServer = new Server(parentObject.getPort(), 1000, parentObject.getCodeBase());
-			Thread threadserver = new Thread(parentObject.httpServer);
-			threadserver.start();			
+			Thread serverThread = new Thread(parentObject.httpServer);
+			serverThread.start();
 
 			setLabel("STOP");
 			setBackground(Color.RED);
