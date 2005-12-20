@@ -49,7 +49,7 @@ implements WindowListener
 		panelTopRight.add(controlButton);
 		panelTop.add("East", panelTopRight);
 
-		ioTextArea = new TextArea("Diagnostic WebServer ver. bm_1.0a\n\n");
+		ioTextArea = new TextArea("Diagnostic WebServer ver. bm_1.1b\n\n");
 		add("Center", ioTextArea);
 		ioTextArea.setRows(100);
 
