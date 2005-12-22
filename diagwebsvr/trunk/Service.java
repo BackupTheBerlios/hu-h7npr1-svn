@@ -166,7 +166,7 @@ implements HttpConstants, Runnable
 			requestURI = "/index.html"; /* request index.html */
 
 		/* Format URI to OS specific separator char ('/' or '\') */
-		requestURI.replace('/', File.separatorChar);
+		requestURI = requestURI.replace('/', File.separatorChar);
 
 		String httpVersion = stringTokenizer.nextToken();
 
