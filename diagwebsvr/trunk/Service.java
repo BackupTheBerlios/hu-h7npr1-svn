@@ -3,7 +3,7 @@
  * Project     : Diagnostic WebServer (H7NPR1)
  * Auteur(s)   : Erwin Beukhof  (1149712)
  *               Stephen Maij   (1145244)
- * Datum       : 20-12-2005
+ * Datum       : 22-12-2005
  * Beschrijving: Meerdraadse Server - klasse Service
  */
 
@@ -164,6 +164,9 @@ implements HttpConstants, Runnable
 			requestURI = "/index.html"; /* no particular resource */
 		else if (requestURI.equals("/"))
 			requestURI = "/index.html"; /* request index.html */
+
+		/* Format URI to OS specific separator char ('/' or '\') */
+		requestURI.replace('/', File.separatorChar);
 
 		String httpVersion = stringTokenizer.nextToken();
 
