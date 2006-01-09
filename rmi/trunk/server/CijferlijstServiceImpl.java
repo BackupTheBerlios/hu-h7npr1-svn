@@ -3,7 +3,7 @@ package server;
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.*;
-
+import interfaces.*;
 
 public class CijferlijstServiceImpl
 extends UnicastRemoteObject

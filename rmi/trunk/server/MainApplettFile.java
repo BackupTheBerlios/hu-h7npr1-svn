@@ -11,6 +11,7 @@ import java.applet.Applet;
 import java.net.URL;
 import java.rmi.Naming;
 import java.util.*;
+import interfaces.*;
 
 
 /**
