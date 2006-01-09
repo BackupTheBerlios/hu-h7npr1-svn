@@ -4,13 +4,14 @@
  * Created on 20 november 2005, 21:28
  */
 
-package javaappletth7npr1rmi;
+package server;
 
 import java.awt.Graphics;
 import java.applet.Applet;
 import java.net.URL;
 import java.rmi.Naming;
 import java.util.*;
+
 
 /**
  *

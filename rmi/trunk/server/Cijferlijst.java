@@ -1,5 +1,4 @@
-
-package javaappletth7npr1rmi;
+package server;
 
 import java.util.*;
 import java.sql.*;

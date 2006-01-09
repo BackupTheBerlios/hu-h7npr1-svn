@@ -1,4 +1,4 @@
-package javaappletth7npr1rmi;
+package server;
 
 import java.rmi.Remote;
 import java.rmi.RemoteException;

@@ -8,7 +8,7 @@
  * Open. You can then make changes to the template in the Source Editor.
  */
 
-package javaappletth7npr1rmi;
+package server;
 
 import java.sql.Connection;
 import java.sql.DriverManager;

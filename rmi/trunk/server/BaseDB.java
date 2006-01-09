@@ -9,7 +9,7 @@
  *De baseDB onderhoud de verbinding naar de database en voorziet en methodes
  *voor select, update, insert en delete operaties.
  */
-package javaappletth7npr1rmi;
+package server;
 
 import java.util.*;
 import java.sql.*;

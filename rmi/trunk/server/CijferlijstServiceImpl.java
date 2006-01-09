@@ -1,8 +1,9 @@
-package javaappletth7npr1rmi;
+package server;
 
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.*;
+
 
 public class CijferlijstServiceImpl
 extends UnicastRemoteObject

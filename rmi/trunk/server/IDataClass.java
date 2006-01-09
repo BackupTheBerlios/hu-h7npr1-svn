@@ -6,7 +6,7 @@
  *deze moet geimplementeerd worden omdat haalOp() uit de BaseDB
  *een standaard Dataclass moet terug kunnen geven.
  */ 
-package javaappletth7npr1rmi;
+package server;
 
 public interface IDataClass {
     
