@@ -7,11 +7,10 @@ import java.util.*;
 public interface CijferlijstService
 extends Remote
 {
-  String refName = "CijferlijstService";
-  
-  Hashtable getStudents()
-  throws RemoteException;
-  
-  boolean store(String StudentNaam, double Cijfer)
-  throws RemoteException;
+	String refName = "CijferlijstService";
+
+	String[][] getList()                                 throws RemoteException;
+	String[]   getOne(int id)                            throws RemoteException;
+	void       setOne(int id, String name, double grade) throws RemoteException;
+	void       deleteOne(int id)                         throws RemoteException;
 }

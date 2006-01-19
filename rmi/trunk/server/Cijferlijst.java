@@ -2,67 +2,92 @@ package server;
 
 import java.util.*;
 import java.sql.*;
+
 import sun.jdbc.odbc.*;
 
-public class Cijferlijst {
-    
-    private CijferlijstDB cfdb;
-    private Hashtable cijfers;
-    
-    public Cijferlijst(){
-        cfdb = new CijferlijstDB();
-    }
-    
-    public boolean store(String naam, double cijfer){
-        if (cijfers.contains(naam)){
-            CijferlijstData cfd = (CijferlijstData) cijfers.get(naam);
-            if (!(cfd.studentName.equals(naam) && cfd.cijfer == cijfer)){
-                cfd.studentName = naam;
-                cfd.cijfer = cijfer;
-                try {
-                    cfdb.slaOp(cfd);
-                }
-                catch (SQLException ex) { 
-                    ex.getMessage(); 
-                    return false;
-                }
-            }
-        }
-        else {
-            try {
-                if (cfdb.bestaatNaam(naam)) return false;
-                CijferlijstData cfd = new CijferlijstData();
-                cfd.studentName = naam;
-                cfd.cijfer = cijfer;
-                cfdb.slaOp(cfd);                     
-            }
-            catch (SQLException ex) { 
-                ex.getMessage(); 
-                return false;
-            }           
-        }
-        return true;
-    }
-    
-    public Hashtable getHashtable(){
-        try {
-            cijfers = cfdb.zoek();
-        }
-        catch (SQLException ex) { ex.getMessage(); }
-        
-        Hashtable temp = new Hashtable();
-        if (!cijfers.isEmpty()){
+public class Cijferlijst
+{
+	private CijferlijstDB cfdb;
+	//private Hashtable cijfers;
 
-                CijferlijstData tempdata;
-                for (Enumeration e = cijfers.elements(); e.hasMoreElements();){
-                        tempdata = (CijferlijstData)e.nextElement();
-                        temp.put(tempdata.studentName, Double.toString(tempdata.cijfer));
-                }
-                return temp;
-        }
-        else {
-                return null;	
-        }        
-        
-    }
+	public Cijferlijst()
+	{
+		System.out.println("About to instantiate CijferlijstDB()");
+		cfdb = new CijferlijstDB();
+	}
+
+	public CijferlijstData[] getCijferlijst()
+	{
+		CijferlijstData[] resultSet = null;
+		try
+		{
+			ResultSet rs = cfdb.getAll();
+			while(rs.next())
+			{
+				resultSet = CijferlijstData.arrayAdd(resultSet, parseRS(rs));
+			}
+			return resultSet;
+		}
+		catch (SQLException ex)
+		{
+			ex.getMessage(); 
+		}
+		return null;
+	}
+
+	public CijferlijstData getCijfer(int id)
+	{
+		CijferlijstData resultSet = null;
+		try
+		{
+			ResultSet rs = cfdb.getOne(id);
+			if (rs.next())
+			{
+				resultSet = parseRS(rs);
+				return resultSet;
+			}
+		}
+		catch (SQLException ex)
+		{
+			ex.getMessage(); 
+		}
+		return null;
+	}
+
+	public void setCijfer(CijferlijstData cijferData)
+	{
+		try
+		{
+			if (cijferData.cijferID == 0)
+				cfdb.insertOne(cijferData);
+			else
+				cfdb.updateOne(cijferData);
+		}
+		catch (SQLException ex)
+		{
+			ex.getMessage(); 
+		}
+	}
+	
+	public void deleteCijfer(int id)
+	{
+		try
+		{
+			cfdb.deleteOne(id);
+		}
+		catch (SQLException ex)
+		{
+			ex.getMessage(); 
+		}
+	}
+
+	private CijferlijstData parseRS(ResultSet rs)
+	throws SQLException
+	{
+		CijferlijstData cf =  new CijferlijstData();
+		cf.cijferID = rs.getInt("CijferID");
+		cf.studentName = rs.getString("StudentNaam");
+		cf.cijfer = rs.getDouble("Cijfer");
+		return cf;
+	}
 }
