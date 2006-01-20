@@ -1,9 +1,15 @@
+/******************************************************************
+ * CODE FILE   : CijferlijstDB.java
+ * Project     : RMI (H7NPR1)
+ * Auteur(s)   : Erwin Beukhof  (1149712)
+ *               Stephen Maij   (1145244)
+ * Datum       : 19-01-2006
+ * Beschrijving: Class CijferlijstDB - Primary handling of database
+ *               related tasks
+ */
 package server;
 
-import java.util.*;
 import java.sql.*;
-
-import sun.jdbc.odbc.*;
 
 class CijferlijstDB
 {
@@ -23,7 +29,8 @@ class CijferlijstDB
 	public ResultSet getAll()
 	throws SQLException
 	{
-		ResultSet rs = dbConnection.getResultset("select CijferID, StudentNaam, Cijfer from cijferlijst");
+		ResultSet rs = dbConnection.getResultset("select CijferID, StudentNaam, Cijfer from cijferlijst " +
+																"order by StudentNaam");
 		return rs;
 	}
 
@@ -44,7 +51,7 @@ class CijferlijstDB
 	public void updateOne(CijferlijstData inData)
 	throws SQLException
 	{
-		ResultSet rs = dbConnection.getResultset("update table cijferlijst set StudentNaam='" + inData.studentName +
+		ResultSet rs = dbConnection.getResultset("update cijferlijst set StudentNaam='" + inData.studentName +
 																"', Cijfer=" + String.valueOf(inData.cijfer) +
 																" where CijferID=" + String.valueOf(inData.cijferID));
 	}

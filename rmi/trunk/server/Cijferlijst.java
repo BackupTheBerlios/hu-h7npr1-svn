@@ -1,9 +1,14 @@
+/******************************************************************
+ * CODE FILE   : Cijferlijst.java
+ * Project     : RMI (H7NPR1)
+ * Auteur(s)   : Erwin Beukhof  (1149712)
+ *               Stephen Maij   (1145244)
+ * Datum       : 19-01-2006
+ * Beschrijving: Class Cijferlijst - Business class
+ */
 package server;
 
-import java.util.*;
 import java.sql.*;
-
-import sun.jdbc.odbc.*;
 
 public class Cijferlijst
 {

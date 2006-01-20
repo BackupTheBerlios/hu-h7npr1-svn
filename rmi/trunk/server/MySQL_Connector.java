@@ -1,23 +1,19 @@
-/*
- * MySQL_Connector.java
- *
- * Created on 21 november 2005, 19:10
- *
- * To change this template, choose Tools | Options and locate the template under
- * the Source Creation and Management node. Right-click the template and choose
- * Open. You can then make changes to the template in the Source Editor.
+/******************************************************************
+ * CODE FILE   : MySQL_Connector.java
+ * Project     : RMI (H7NPR1)
+ * Auteur(s)   : Erwin Beukhof  (1149712)
+ *               Stephen Maij   (1145244)
+ * Datum       : 20-01-2006
+ * Beschrijving: Class MySQL_Connector - Handling of specific MySQL
+ *               related tasks
  */
-
 package server;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.*;
-/**
- *
- * @author Stephen
- */
+
 public class MySQL_Connector
 {
 	private Connection conn = null;
@@ -54,7 +50,7 @@ public class MySQL_Connector
 		return conn;
 	}
 
-	public ResultSet executeQuery(String s)
+	public ResultSet executeQuery(String query)
 	{
 		System.out.println("Executing Query...");
 		ResultSet returnSet = null;
@@ -64,7 +60,7 @@ public class MySQL_Connector
 			Statement stmt = conn.createStatement();
 			ResultSet rs;
 
-			if (stmt.execute(s))
+			if (stmt.execute(query))
 			{
 				returnSet = stmt.getResultSet();
 			}
@@ -80,10 +76,10 @@ public class MySQL_Connector
 		return returnSet;
 	}
 
-	public ResultSet getResultset(String s)
+	public ResultSet getResultset(String query)
 	throws SQLException
 	{
-		return executeQuery(s);
+		return executeQuery(query);
 	}
 
 	public void connect()
