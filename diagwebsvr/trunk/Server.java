@@ -17,7 +17,7 @@ import java.util.HashSet;
 class Server
 implements Runnable
 {
-	static final boolean DEBUG_MODE = true;
+	static final boolean DEBUG_MODE = false;
 
 	private int port;
 	private int backLog;
