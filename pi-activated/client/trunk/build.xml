@@ -1,0 +1,19 @@
+<project name="H7NPR1 - PI Activated Client" default="build" basedir=".">
+
+ <property name="java_home" value="/usr/lib/java"/>
+
+  <target name="clean">
+    <delete file="Main.class"/>
+  </target>
+
+  <target name="javac" depends="clean">
+    <javac srcdir="."  executable="${java_home}/bin/javac" includes="**/*.java" fork="true"/>
+  </target>
+
+  <target name="exec" depends="javac">
+    <java classname="Main" jvm="${java_home}/bin/java" dir="." classpath="." fork="true"/>
+  </target>
+
+  <target name="build" depends="exec"/>
+
+</project>
