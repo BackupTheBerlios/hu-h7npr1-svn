@@ -15,10 +15,12 @@ import java.rmi.Naming;
 
 public class CijferlijstServer
 {
+	private static final String HOST = "127.0.0.1"; // 10.19.133.7
+
 	public static void main(String[] args)
 	throws Exception
 	{
-		String codebase = "http://10.19.133.7:4711/";
+		String codebase = "http://" + HOST + ":4711/";
 		System.setProperty("java.rmi.server.codebase", codebase);
 		System.setProperty("java.rmi.server.logCalls", "true"  );
 		System.setProperty("java.rmi.dgc.leaseValue", "600000"); // 10 minutes
@@ -34,7 +36,7 @@ public class CijferlijstServer
 		// Instantiating CijferlijstServiceImpl)
 		CijferlijstServiceImpl cijferlijst = new CijferlijstServiceImpl();
 		// Register the service
-		Naming.rebind("rmi://10.19.133.7:1099/"+CijferlijstService.refName, cijferlijst);
+		Naming.rebind("rmi://" + HOST + ":1099/"+CijferlijstService.refName, cijferlijst);
 		System.out.println("Codebase="+codebase);
 		System.out.println("Reference="+cijferlijst);
 		System.out.println("Server ready...");

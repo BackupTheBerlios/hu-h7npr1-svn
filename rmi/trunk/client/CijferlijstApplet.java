@@ -188,8 +188,8 @@ extends JApplet
 			log("Getting codebase...");
 			URL codebase = getCodeBase();
 			log("codebase: " + codebase.toString());
-			//String host = codebase.getHost();
-			String host = "10.19.133.7";
+			String host = codebase.getHost();
+			//String host = "127.0.0.1";
 			String service = "rmi://" + host + ":1099/" + CijferlijstService.refName;
 			cls = (CijferlijstService)Naming.lookup(service);
 			log("Service looked up");
