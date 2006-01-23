@@ -6,6 +6,6 @@ import java.io.Serializable;
 public interface Result
 extends Serializable
 {
-  BigDecimal getBigDecimal(); // get the result
-  long getTime();             // get the calculation time
+	BigDecimal getBigDecimal(); // get the result
+	long getTime();             // get the calculation time
 }
