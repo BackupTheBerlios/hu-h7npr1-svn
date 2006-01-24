@@ -17,16 +17,17 @@ public class Main
 	public static void main(String[] args)
 	throws Exception
 	{
-		System.setProperty("java.rmi.server.codebase", "http://127.0.0.1:4711/");
+		System.setProperty("java.rmi.server.codebase", "http://192.168.0.93:4711/");
 
 		ActivationSystem activationSystem = getSystem();
 		ActivationGroupDesc agd = new ActivationGroupDesc(null, null);
 		ActivationGroupID agid = activationSystem.registerGroup(agd);
 		String className = "pi.PiImpl";
-		// String location = "file://home/ebeukhof/Documents/HvU/H7NPR1/Sources/Projects/PI_Activated/Server/";
-		String location = "http://127.0.0.1:4711/";
+		String location = "file://home/ebeukhof/Documents/HvU/H7NPR1/Sources/Projects/PI_Activated/Server/";
+		//String location = "http://192.168.0.93:4711/";
 		ActivationDesc ad = new ActivationDesc(agid, className, location, null);
 		Remote pi = Activatable.register(ad);
+		System.out.println("registered...");
 
 		if (persistentRMIregistry)
 		{
